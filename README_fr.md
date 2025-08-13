@@ -112,6 +112,72 @@ Toutes ces vidéos, audios et rapports peuvent être présentés comme preuves e
 ## 4. **Comment ça fonctionne ?**
 
 
+### A. Présentation générale du système UFRECS
+
+Le système **UFRECS** (U-F-R-E-C-S) repose sur trois principales applications :
+
+1. **Une application back-end**
+2. **Une application mobile destinée aux rapporteurs**
+3. **Une application mobile destinée aux citoyens**
+
+Ces trois composantes interagissent pour permettre un suivi précis, en temps réel ou différé, des opérations de vote et de dépouillement dans chaque bureau de vote.
+
+---
+
+### B. Application Back-End
+
+Le **back-end** est conçu pour supporter une charge extrêmement élevée, capable de gérer simultanément **plus de 100 millions d’utilisateurs connectés**.
+Il s’appuie sur des technologies de **messagerie événementielle** (*event messaging*) afin de diffuser rapidement les mises à jour aux clients connectés.
+
+Exemple de technologie utilisée : **RabbitMQ**, permettant d’envoyer des événements aux différentes applications clientes.
+
+---
+
+### C. Application Mobile du Rapporteur
+
+L’application destinée aux **rapporteurs** est conçue pour être simple et intuitive. Elle offre deux modes principaux :
+
+* **Mode "Vote en cours"**
+
+  * Affichage d’un bouton **"Une personne vient d’entrer"** qui déclenche la prise d’une photo du citoyen entrant dans **l’isoloir**.
+  * Ce bouton se transforme ensuite en deux options :
+
+    * **"La personne est sortie"**
+    * **"La personne est sortie et a déchiré"**
+  * Des options supplémentaires permettent de renseigner le genre (homme/femme) et la tranche d’âge (jeune/adulte/vieux).
+  * Une fois validée, l’information est envoyée au back-end pour mise à jour du nombre de votants.
+
+* **Mode "Décompte des votes"**
+
+  * Configuration préalable : choix de la source de vérité (audio ou vidéo).
+  * En mode audio : enregistrement vocal du décompte.
+  * En mode vidéo : enregistrement filmé du dépouillement.
+  * L’interface présente les boutons correspondant à chaque **parti** et **candidat**. Chaque clic enregistre un vote, envoyé immédiatement ou stocké en attente si le réseau est indisponible.
+  * Cette fonctionnalité permet un **décompte en temps réel** ou **différé mais exact**.
+  * Plusieurs rapporteurs peuvent couvrir un même bureau, permettant une **vérification croisée des données**.
+
+---
+
+### D. Application Mobile du Citoyen
+
+L’application citoyenne offre deux principales possibilités :
+
+* **Suivi global** : consulter en temps réel l’évolution des votes au niveau national.
+* **Suivi local** : choisir un bureau de vote spécifique et suivre ses mises à jour.
+
+Elle permet aussi à un électeur de **vérifier que son vote a été pris en compte**. Lorsqu’il quitte le bureau, le rapporteur l’enregistre comme "sorti", ce qui déclenche l’envoi d’un événement au back-end, puis la mise à jour immédiate sur l’application citoyenne (avec statistiques de genre et d’âge).
+
+---
+
+### E. Fonctionnement global
+
+1. Les rapporteurs enregistrent les entrées/sorties et le dépouillement via leur application.
+2. Les données sont transmises au back-end, qui les diffuse aux citoyens et autres systèmes connectés.
+3. Les citoyens peuvent vérifier en temps réel ou a posteriori l’évolution des résultats.
+4. La conception du système garantit la **scalabilité**, la **résilience aux coupures réseau**, et la **transparence** dans le processus électoral.
+
+
+
 ## 5. **Feuille de route**
 
 [] Décider comment cela fonctionnera
