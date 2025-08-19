@@ -258,13 +258,13 @@ Un backend UFRECS peut être implémenté dans n’importe quelle technologie **
 * **Scripts développeur** :
 
   * `setup-dev-mode.sh` : installer **toutes** les dépendances et préparer l’environnement local.
-  * `run-dev-mode` : démarrer le serveur en mode développement.
+  * `run-dev-mode.sh` : démarrer le serveur en mode développement.
 * **Script de déploiement** :
 
-  * `install-home-prod` : provisioning de production de bout en bout (dépendances, configuration serveur, Nginx, etc.).
+  * `install-home-prod.sh` : provisioning de production de bout en bout (dépendances, configuration serveur, Nginx, etc.).
 * **Tests** :
 
-  * `run-test` : exécuter l’ensemble de la suite de tests backend.
+  * `run-tests.sh` : exécuter l’ensemble de la suite de tests backend.
 
 Objectifs : **documenté**, **testé**, **rapide à installer**, **interchangeable** (le backend peut être remplacé tant que l’API est respectée).
 

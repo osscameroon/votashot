@@ -259,13 +259,13 @@ A UFRECS backend may be implemented in any technology **provided** it respects t
 * **Developer scripts**:
 
   * `setup-dev-mode.sh`: install **all** dependencies and prep local env.
-  * `run-dev-mode`: start the server in dev mode.
+  * `run-dev-mode.sh`: start the server in dev mode.
 * **Deployment script**:
 
-  * `install-home-prod`: end-to-end production provisioning (deps, server config, Nginx, etc.).
+  * `install-home-prod.sh`: end-to-end production provisioning (deps, server config, Nginx, etc.).
 * **Tests**:
 
-  * `run-test`: run the complete backend test suite.
+  * `run-tests.sh`: run the complete backend test suite.
 
 Goals: **documented**, **tested**, **quick to install**, **swappable** (backend can be replaced as long as the API is honored).
 
