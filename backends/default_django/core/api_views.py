@@ -2,8 +2,10 @@ import json
 import secrets
 import os
 import boto3
+from datetime import timedelta
 
 from django.conf import settings
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.mixins import ListModelMixin
 from rest_framework.response import Response
@@ -24,7 +26,7 @@ from .gen.api_views import (
     GeneratedVotingPaperResultProposedViewSet,
     GeneratedVotingPaperResultViewSet,
 )
-from .models import Source, PollOffice, SourceToken
+from .models import Source, PollOffice, SourceToken, VoteProposed
 from .serializers import AuthenticationInputSerializer, VoteInputSerializer, PollOfficeSerializer, \
     AuthenticationResponseSerializer, VotingPaperResultInputSerializer, VotingPaperResultSerializer, \
     VotingPaperResultResponseSerializer, VoteResponseSerializer
@@ -32,6 +34,9 @@ from drf_spectacular.utils import extend_schema
 
 STS_ROLE_ARN = settings.STS_ROLE_ARN
 sts = boto3.client("sts")
+# Defaults used when running without AWS STS
+REGION = os.getenv("AWS_REGION", "us-east-1")
+base_path = getattr(settings, "AWS_S3_ENDPOINT_URL", "")
 
 
 class SourceViewSet(GeneratedSourceViewSet):
@@ -153,28 +158,43 @@ class AuthenticateApiView(APIView):
 
         source_token: SourceToken = SourceToken.objects.filter(source=source, poll_office=poll_office).first()
         if not source_token:
-            source_token = SourceToken.objects.create(source=source, poll_office=poll_office)
+            source_token = SourceToken.objects.create(
+                source=source,
+                poll_office=poll_office,
+                token=secrets.token_urlsafe(32),
+            )
 
 
 
-        # In a real implementation, these would be STS credentials; mocked for now
-        res = sts.assume_role(
-            RoleArn=STS_ROLE_ARN,
-            RoleSessionName=f"u-{elector_id}",
-            DurationSeconds=3600,
-            Tags=[{"Key": "user_id", "Value": elector_id}],
-            TransitiveTagKeys=["user_id"],
-            # Optional session policy for extra defense-in-depth:
-            Policy=json.dumps({
-                "Version": "2012-10-17",
-                "Statement": [{
-                    "Effect": "Allow",
-                    "Action": ["s3:PutObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
-                    "Resource": f"arn:aws:s3:::{settings.AWS_STORAGE_BUCKET_NAME}/{poll_office_id}/{elector_id}/*"
-                }]
-            })
-        )
-        c = res["Credentials"]
+        # In a real implementation, these would be STS credentials; fallback if STS is not configured
+        if STS_ROLE_ARN:
+            res = sts.assume_role(
+                RoleArn=STS_ROLE_ARN,
+                RoleSessionName=f"u-{elector_id}",
+                DurationSeconds=3600,
+                Tags=[{"Key": "user_id", "Value": elector_id}],
+                TransitiveTagKeys=["user_id"],
+                Policy=json.dumps({
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:PutObject",
+                            "s3:AbortMultipartUpload",
+                            "s3:ListMultipartUploadParts",
+                        ],
+                        "Resource": f"arn:aws:s3:::{settings.AWS_STORAGE_BUCKET_NAME}/{poll_office_id}/{elector_id}/*",
+                    }],
+                }),
+            )
+            c = res["Credentials"]
+        else:
+            c = {
+                "AccessKeyId": secrets.token_urlsafe(8),
+                "SecretAccessKey": secrets.token_urlsafe(16),
+                "SessionToken": secrets.token_urlsafe(24),
+                "Expiration": timezone.now() + timedelta(hours=1),
+            }
 
         return Response(
             {
@@ -217,8 +237,8 @@ class VoteApiView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        seria.save()
-        return Response({"id": seria.instance.pk, "index": seria.validated_data["index"]})
+        vote_proposed: VoteProposed = seria.save()
+        return Response({"id": vote_proposed.pk, "index": seria.validated_data["index"]})
 
 
 class VotingPaperResultView(APIView):

@@ -28,6 +28,7 @@ from .models import (
     VotingPaperResult,
     VotingPaperResultProposed,
 )
+from django.db import transaction
 
 
 class SourceSerializer(GeneratedSourceSerializer):
@@ -134,9 +135,33 @@ class SourceTokenSerializer(GeneratedSourceTokenSerializer):
 
 class VoteInputSerializer(Serializer):
     index = IntegerField()
-    genre = ChoiceField(choices=Gender.choices())
+    gender = ChoiceField(choices=Gender.choices())
     age = ChoiceField(choices=Age.choices())
     has_torn = BooleanField(default=False)
+
+    def save(self, **kwargs):
+        request = self.context.get("request")
+        source_token: SourceToken = request.source_token
+        poll_office_id = source_token.poll_office_id
+
+        with transaction.atomic():
+            poll_office = PollOffice.objects.select_for_update().get(pk=poll_office_id)
+            vote, created = Vote.objects.get_or_create(poll_office=poll_office)
+            vote_proposed: VoteProposed = VoteProposed.objects.filter(vote=vote,
+                                                    source=source_token.source).first()
+            if not vote_proposed:
+                vote_proposed = VoteProposed.objects.create(vote=vote, source=source_token.source,
+                                    gender=self.validated_data.get("gender"),
+                                    age=self.validated_data.get("age"),
+                                    has_torn=self.validated_data.get("has_torn", False),)
+            else:
+                vote_proposed.gender = self.validated_data.get("gender")
+                vote_proposed.age = self.validated_data.get("age")
+                vote_proposed.has_torn = self.validated_data.get("has_torn", False)
+                vote_proposed.save()
+
+        return vote_proposed
+
 
 
 class VoteResponseSerializer(Serializer):
