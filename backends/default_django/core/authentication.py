@@ -43,7 +43,7 @@ class TokenAuthentication(DrfTokenAuthentication):
             if not source_token:
                 source_token: SourceToken = SourceToken.objects.get(token=key)
                 TokenCache.cache[key] = source_token
-                logger.debug(f"key {key} given to user {source_token.user}")
+                logger.debug(f"key {key} given to user {source_token.source.user}")
 
             # if source_token and source_token.expiry:
             #     if source_token.expiry < timezone.now():
@@ -52,7 +52,7 @@ class TokenAuthentication(DrfTokenAuthentication):
 
             if source_token:
                 request.source_token = source_token
-                return source_token.user, key
+                return source_token.source.user, key
 
         except SourceToken.DoesNotExist:
             return None

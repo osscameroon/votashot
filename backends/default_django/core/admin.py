@@ -31,7 +31,14 @@ from .models import (
 @admin.register(Source)
 class SourceAdmin(GeneratedSourceAdmin):
 
-    list_display = ('id', 'elector_id', 'type', 'official_org', 'full_name', 'email')
+    list_display = (
+        "id",
+        "elector_id",
+        "type",
+        "official_org",
+        "full_name",
+        "email",
+    )
 
 
 @admin.register(PollOffice)

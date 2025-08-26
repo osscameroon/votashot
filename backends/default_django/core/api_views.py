@@ -1,17 +1,19 @@
 import json
-import secrets
 import os
-import boto3
+import secrets
 from datetime import timedelta
 
+import boto3
+from common_bases.custom_viewsets import CustomGenericViewSet
 from django.conf import settings
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.mixins import ListModelMixin
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common_bases.custom_viewsets import CustomGenericViewSet
 from .enums import SourceType
 from .gen.api_views import (
     GeneratedCandidatePartyViewSet,
@@ -26,11 +28,17 @@ from .gen.api_views import (
     GeneratedVotingPaperResultProposedViewSet,
     GeneratedVotingPaperResultViewSet,
 )
-from .models import Source, PollOffice, SourceToken, VoteProposed
-from .serializers import AuthenticationInputSerializer, VoteInputSerializer, PollOfficeSerializer, \
-    AuthenticationResponseSerializer, VotingPaperResultInputSerializer, VotingPaperResultSerializer, \
-    VotingPaperResultResponseSerializer, VoteResponseSerializer
-from drf_spectacular.utils import extend_schema
+from .models import PollOffice, Source, SourceToken, VoteProposed
+from .serializers import (
+    AuthenticationInputSerializer,
+    AuthenticationResponseSerializer,
+    PollOfficeSerializer,
+    VoteInputSerializer,
+    VoteResponseSerializer,
+    VotingPaperResultInputSerializer,
+    VotingPaperResultResponseSerializer,
+    VotingPaperResultSerializer,
+)
 
 STS_ROLE_ARN = settings.STS_ROLE_ARN
 sts = boto3.client("sts")
@@ -48,6 +56,7 @@ class PollOfficeViewSet(CustomGenericViewSet, ListModelMixin):
 
     queryset = PollOffice.objects.all()
     serializer_class = PollOfficeSerializer
+    permission_classes = [AllowAny]
 
 
 class VoteViewSet(GeneratedVoteViewSet):
@@ -98,8 +107,12 @@ class ModeApiView(APIView):
 
 
 class AuthenticateApiView(APIView):
-    @extend_schema(request=AuthenticationInputSerializer(),
-                   responses={200: AuthenticationResponseSerializer()})
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=AuthenticationInputSerializer(),
+        responses={200: AuthenticationResponseSerializer()},
+    )
     def post(self, request, *args, **kwargs):
         seria = AuthenticationInputSerializer(data=request.data)
         if not seria.is_valid():
@@ -116,7 +129,9 @@ class AuthenticateApiView(APIView):
         poll_office_id = seria.validated_data["poll_office_id"]
         password = seria.validated_data.get("password")
 
-        poll_office: PollOffice = PollOffice.objects.filter(identifier=poll_office_id).first()
+        poll_office: PollOffice = PollOffice.objects.filter(
+            identifier=poll_office_id
+        ).first()
         if not poll_office:
             return Response(
                 {
@@ -156,15 +171,15 @@ class AuthenticateApiView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        source_token: SourceToken = SourceToken.objects.filter(source=source, poll_office=poll_office).first()
+        source_token: SourceToken = SourceToken.objects.filter(
+            source=source, poll_office=poll_office
+        ).first()
         if not source_token:
             source_token = SourceToken.objects.create(
                 source=source,
                 poll_office=poll_office,
                 token=secrets.token_urlsafe(32),
             )
-
-
 
         # In a real implementation, these would be STS credentials; fallback if STS is not configured
         if STS_ROLE_ARN:
@@ -174,18 +189,22 @@ class AuthenticateApiView(APIView):
                 DurationSeconds=3600,
                 Tags=[{"Key": "user_id", "Value": elector_id}],
                 TransitiveTagKeys=["user_id"],
-                Policy=json.dumps({
-                    "Version": "2012-10-17",
-                    "Statement": [{
-                        "Effect": "Allow",
-                        "Action": [
-                            "s3:PutObject",
-                            "s3:AbortMultipartUpload",
-                            "s3:ListMultipartUploadParts",
+                Policy=json.dumps(
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "s3:PutObject",
+                                    "s3:AbortMultipartUpload",
+                                    "s3:ListMultipartUploadParts",
+                                ],
+                                "Resource": f"arn:aws:s3:::{settings.AWS_STORAGE_BUCKET_NAME}/{poll_office_id}/{elector_id}/*",
+                            }
                         ],
-                        "Resource": f"arn:aws:s3:::{settings.AWS_STORAGE_BUCKET_NAME}/{poll_office_id}/{elector_id}/*",
-                    }],
-                }),
+                    }
+                ),
             )
             c = res["Credentials"]
         else:
@@ -209,7 +228,7 @@ class AuthenticateApiView(APIView):
                         "accessKeyId": c["AccessKeyId"],
                         "secretAccessKey": c["SecretAccessKey"],
                         "sessionToken": c["SessionToken"],
-                        "expiration": c["Expiration"]
+                        "expiration": c["Expiration"],
                     },
                 },
             }
@@ -223,38 +242,48 @@ class SourceTokenViewSet(GeneratedSourceTokenViewSet):
 
 class VoteApiView(APIView):
 
-    @extend_schema(request=VoteInputSerializer(),
-                   responses=VoteResponseSerializer(),)
+    @extend_schema(
+        request=VoteInputSerializer(),
+        responses=VoteResponseSerializer(),
+    )
     def post(self, request, *args, **kwargs):
-        seria = VoteInputSerializer(data=request.data)
+        seria = VoteInputSerializer(
+            data=request.data, context={"request": request}
+        )
         if not seria.is_valid():
             return Response(
-                    {
-                        "message": "Invalid data",
-                        "code": "invalid_data",
-                        "errors": seria.errors,
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                {
+                    "message": "Invalid data",
+                    "code": "invalid_data",
+                    "errors": seria.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         vote_proposed: VoteProposed = seria.save()
-        return Response({"id": vote_proposed.pk, "index": seria.validated_data["index"]})
+        return Response(
+            {"id": vote_proposed.pk, "index": seria.validated_data["index"]}
+        )
 
 
 class VotingPaperResultView(APIView):
-    @extend_schema(request=VotingPaperResultInputSerializer(),
-                   responses={200: VotingPaperResultResponseSerializer()})
+    @extend_schema(
+        request=VotingPaperResultInputSerializer(),
+        responses={200: VotingPaperResultResponseSerializer()},
+    )
     def post(self, request, *args, **kwargs):
-        seria = VotingPaperResultInputSerializer(data=request.data)
+        seria = VotingPaperResultInputSerializer(
+            data=request.data, context={"request": request}
+        )
         if not seria.is_valid():
             return Response(
-                    {
-                        "message": "Invalid data",
-                        "code": "invalid_data",
-                        "errors": seria.errors,
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                {
+                    "message": "Invalid data",
+                    "code": "invalid_data",
+                    "errors": seria.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         seria.save()
         return Response({"status": "ok"})

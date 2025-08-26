@@ -1,5 +1,6 @@
+from django.contrib.auth.hashers import check_password as django_check_password
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
-from django.contrib.auth.hashers import make_password, check_password as django_check_password
 from django.db import models
 
 from .gen.models import (
@@ -15,7 +16,6 @@ from .gen.models import (
     GeneratedVotingPaperResult,
     GeneratedVotingPaperResultProposed,
 )
-from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
@@ -24,11 +24,15 @@ class User(AbstractUser):
 
 class Source(GeneratedSource):
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, null=True, blank=True
+    )
 
     def save(self, *args, **kwargs):
         if not self.pk:
-            self.user = self.user or User.objects.create_user(username=self.elector_id)
+            self.user = self.user or User.objects.create_user(
+                username=self.elector_id
+            )
         return super().save(*args, **kwargs)
 
     def set_password(self, password):

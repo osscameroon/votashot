@@ -1,7 +1,14 @@
-from rest_framework.fields import BooleanField, CharField, IntegerField, ChoiceField, JSONField
+from django.db import transaction
+from rest_framework.fields import (
+    BooleanField,
+    CharField,
+    ChoiceField,
+    IntegerField,
+    JSONField,
+)
 from rest_framework.serializers import Serializer
 
-from .enums import Gender, Age
+from .enums import Age, Gender
 from .gen.serializers import (
     GeneratedCandidatePartySerializer,
     GeneratedPollOfficeSerializer,
@@ -28,7 +35,6 @@ from .models import (
     VotingPaperResult,
     VotingPaperResultProposed,
 )
-from django.db import transaction
 
 
 class SourceSerializer(GeneratedSourceSerializer):
@@ -145,23 +151,32 @@ class VoteInputSerializer(Serializer):
         poll_office_id = source_token.poll_office_id
 
         with transaction.atomic():
-            poll_office = PollOffice.objects.select_for_update().get(pk=poll_office_id)
-            vote, created = Vote.objects.get_or_create(poll_office=poll_office)
-            vote_proposed: VoteProposed = VoteProposed.objects.filter(vote=vote,
-                                                    source=source_token.source).first()
+            poll_office = PollOffice.objects.select_for_update().get(
+                pk=poll_office_id
+            )
+            vote, created = Vote.objects.get_or_create(
+                poll_office=poll_office, index=self.validated_data["index"]
+            )
+            vote_proposed: VoteProposed = VoteProposed.objects.filter(
+                vote=vote, source=source_token.source
+            ).first()
             if not vote_proposed:
-                vote_proposed = VoteProposed.objects.create(vote=vote, source=source_token.source,
-                                    gender=self.validated_data.get("gender"),
-                                    age=self.validated_data.get("age"),
-                                    has_torn=self.validated_data.get("has_torn", False),)
+                vote_proposed = VoteProposed.objects.create(
+                    vote=vote,
+                    source=source_token.source,
+                    gender=self.validated_data.get("gender"),
+                    age=self.validated_data.get("age"),
+                    has_torn=self.validated_data.get("has_torn", False),
+                )
             else:
                 vote_proposed.gender = self.validated_data.get("gender")
                 vote_proposed.age = self.validated_data.get("age")
-                vote_proposed.has_torn = self.validated_data.get("has_torn", False)
+                vote_proposed.has_torn = self.validated_data.get(
+                    "has_torn", False
+                )
                 vote_proposed.save()
 
         return vote_proposed
-
 
 
 class VoteResponseSerializer(Serializer):
@@ -171,7 +186,39 @@ class VoteResponseSerializer(Serializer):
 
 class VotingPaperResultInputSerializer(Serializer):
     index = IntegerField()
-    paper_id = CharField()
+    party_id = CharField()
+
+    def save(self, **kwargs):
+        request = self.context.get("request")
+        source_token: SourceToken = request.source_token
+        poll_office_id = source_token.poll_office_id
+
+        with transaction.atomic():
+            poll_office = PollOffice.objects.select_for_update().get(
+                pk=poll_office_id
+            )
+            voting_paper_result, created = (
+                VotingPaperResult.objects.get_or_create(
+                    poll_office=poll_office, index=self.validated_data["index"]
+                )
+            )
+            vp_result_proposed: VotingPaperResultProposed = (
+                VotingPaperResultProposed.objects.filter(
+                    vp_result=voting_paper_result, source=source_token.source
+                ).first()
+            )
+            candidate_party = CandidateParty.objects.get(
+                identifier=self.validated_data["party_id"]
+            )
+            vp_result_proposed = (
+                VotingPaperResultProposed.objects.get_or_create(
+                    vp_result=voting_paper_result,
+                    source=source_token.source,
+                    defaults={"party_candidate": candidate_party},
+                )
+            )
+
+        return vp_result_proposed
 
 
 class VotingPaperResultResponseSerializer(Serializer):
