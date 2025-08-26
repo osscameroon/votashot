@@ -135,7 +135,7 @@ class GeneratedCandidatePartySerializer(ModelSerializer):
 class GeneratedVotingPaperResultSerializer(ModelSerializer):
 
     poll_office_id = IntegerField(required=True)
-    accepted_candidate_party_id = IntegerField(required=True)
+    accepted_candidate_party_id = IntegerField(required=False)
 
     class Meta:
 

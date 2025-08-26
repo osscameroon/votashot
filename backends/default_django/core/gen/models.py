@@ -250,12 +250,14 @@ class GeneratedVotingPaperResult(models.Model):
             related_name="vp_results",
         )
     )
-    accepted_candidate_party: Union[
-        "CandidateParty", models.ForeignKey["CandidateParty"]
+    accepted_candidate_party: Optional[
+        Union["CandidateParty", models.ForeignKey["CandidateParty"]]
     ] = models.ForeignKey(
         "core.CandidateParty",
         models.DO_NOTHING,
         related_name="vp_results",
+        null=True,
+        blank=True,
     )
 
     class Meta:
