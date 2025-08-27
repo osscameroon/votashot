@@ -4,7 +4,7 @@ from rest_framework.fields import (
     CharField,
     ChoiceField,
     IntegerField,
-    JSONField,
+    JSONField, FloatField,
 )
 from rest_framework.serializers import Serializer
 
@@ -223,3 +223,42 @@ class VotingPaperResultInputSerializer(Serializer):
 
 class VotingPaperResultResponseSerializer(Serializer):
     status = CharField(default="ok")
+
+
+class PollOfficeStatTotalsPartSerializer(Serializer):
+    votes = IntegerField()
+    male = IntegerField()
+    female = IntegerField()
+    less_30 = IntegerField()
+    less_60 = IntegerField()
+    more_60 = IntegerField()
+    has_torn = IntegerField()
+
+
+class PollOfficeStatLastVotePartSerializer(Serializer):
+    index = IntegerField()
+    gender = CharField()
+    age = CharField()
+    has_torn = IntegerField()
+
+
+class PollOfficeStatsSerializer(Serializer):
+    totals = PollOfficeStatTotalsPartSerializer()
+    last_vote = PollOfficeStatLastVotePartSerializer()
+
+
+class PollOfficeResultLastPaperPartSerializer(Serializer):
+    index = IntegerField()
+    party_id = CharField()
+
+
+class PollOfficeResultResultPartSerializer(Serializer):
+    party_id = CharField()
+    ballots = IntegerField()
+    share = FloatField()
+
+
+class PollOfficeResultSerializer(Serializer):
+    last_paper = PollOfficeResultLastPaperPartSerializer(allow_null=True)
+    results = PollOfficeResultResultPartSerializer(many=True)
+    total_ballots = IntegerField()

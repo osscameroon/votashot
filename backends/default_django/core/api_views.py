@@ -4,17 +4,20 @@ import secrets
 from datetime import timedelta
 
 import boto3
+from django.db.models.aggregates import Count
+from django.db.models.query_utils import Q
+
 from common_bases.custom_viewsets import CustomGenericViewSet
 from django.conf import settings
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status
 from rest_framework.mixins import ListModelMixin
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .enums import SourceType
+from .enums import SourceType, Gender, Age
 from .gen.api_views import (
     GeneratedCandidatePartyViewSet,
     GeneratedPollOfficeViewSet,
@@ -28,7 +31,7 @@ from .gen.api_views import (
     GeneratedVotingPaperResultProposedViewSet,
     GeneratedVotingPaperResultViewSet,
 )
-from .models import PollOffice, Source, SourceToken, VoteProposed
+from .models import PollOffice, Source, SourceToken, VoteProposed, Vote, VoteAccepted, VotingPaperResult, CandidateParty
 from .serializers import (
     AuthenticationInputSerializer,
     AuthenticationResponseSerializer,
@@ -37,7 +40,8 @@ from .serializers import (
     VoteResponseSerializer,
     VotingPaperResultInputSerializer,
     VotingPaperResultResponseSerializer,
-    VotingPaperResultSerializer,
+    VotingPaperResultSerializer, PollOfficeStatsSerializer, VoteProposedSerializer, VoteAcceptedSerializer,
+    PollOfficeResultSerializer, CandidatePartySerializer,
 )
 
 STS_ROLE_ARN = settings.STS_ROLE_ARN
@@ -84,9 +88,11 @@ class VoteAcceptedViewSet(GeneratedVoteAcceptedViewSet):
     pass
 
 
-class CandidatePartyViewSet(GeneratedCandidatePartyViewSet):
+class CandidatePartyViewSet(CustomGenericViewSet, ListModelMixin):
 
-    pass
+    serializer_class = CandidatePartySerializer
+    permission_classes = [AllowAny]
+    queryset = CandidateParty.objects.all()
 
 
 class VotingPaperResultViewSet(GeneratedVotingPaperResultViewSet):
@@ -287,3 +293,121 @@ class VotingPaperResultView(APIView):
 
         seria.save()
         return Response({"status": "ok"})
+
+
+class PollOfficeStatsView(APIView):
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('poll_office', type=int, required=False)
+        ],
+        responses={200: PollOfficeStatsSerializer()},
+    )
+    def get(self, request, *args, **kwargs):
+        qps = getattr(request, "query_params", request.GET)
+        poll_office_id = qps.get("poll_office_id") or qps.get("poll_office")
+        if poll_office_id:
+            return self.handle_poll_office_stats(poll_office_id)
+        else:
+            return self.handle_global_stats()
+
+    def handle_global_stats(self):
+        last_vote: Vote = Vote.objects.filter(voteaccepted__isnull=False).last()
+        result = {}
+        if last_vote:
+            result['last_vote'] = VoteAcceptedSerializer(last_vote.voteaccepted).data
+
+        totals = VoteAccepted.objects.aggregate(
+            votes=Count('pk'),
+            male=Count('pk', filter=Q(gender=Gender.MALE)),
+            female=Count('pk', filter=Q(gender=Gender.FEMALE)),
+            less_30=Count('pk', filter=Q(age=Age.LESS_30)),
+            less_60=Count('pk', filter=Q(age=Age.LESS_60)),
+            more_60=Count('pk', filter=Q(age=Age.MORE_60)),
+            has_torn=Count('pk', filter=Q(has_torn=True)),
+        )
+        result["totals"] = totals
+
+        return Response(result)
+
+    def handle_poll_office_stats(self, poll_office_id):
+        last_vote: Vote = Vote.objects.filter(poll_office_id=poll_office_id,
+                                voteaccepted__isnull=False).last()
+        result = {}
+        if last_vote:
+            result['last_vote'] = VoteAcceptedSerializer(last_vote.voteaccepted).data
+
+        totals = VoteAccepted.objects.filter(vote__poll_office_id=poll_office_id).aggregate(
+            votes=Count('pk'),
+            male=Count('pk', filter=Q(gender=Gender.MALE)),
+            female=Count('pk', filter=Q(gender=Gender.FEMALE)),
+            less_30=Count('pk', filter=Q(age=Age.LESS_30)),
+            less_60=Count('pk', filter=Q(age=Age.LESS_60)),
+            more_60=Count('pk', filter=Q(age=Age.MORE_60)),
+            has_torn=Count('pk', filter=Q(has_torn=True)),
+        )
+        result["totals"] = totals
+
+        return Response(result)
+
+
+class PollOfficeResultsView(APIView):
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('poll_office', type=int, required=False)
+        ],
+        responses={200: PollOfficeResultSerializer()},
+    )
+    def get(self, request, *args, **kwargs):
+        """Return aggregated voting paper results optionally filtered by poll office.
+
+        Response structure:
+        {
+          "last_paper": { "index": 250, "party_id": "ABC" },
+          "results": [
+            { "party_id": "ABC", "ballots": 120, "share": 0.48 },
+            { "party_id": "DEF", "ballots": 100, "share": 0.40 },
+            { "party_id": "GHI", "ballots": 30,  "share": 0.12 }
+          ],
+          "total_ballots": 250
+        }
+        """
+
+        qps = getattr(request, "query_params", request.GET)
+        poll_office_id = qps.get("poll_office_id") or qps.get("poll_office")
+        base_qs = VotingPaperResult.objects.filter(
+            accepted_candidate_party__isnull=False
+        )
+        if poll_office_id:
+            base_qs = base_qs.filter(poll_office_id=poll_office_id)
+
+        total_ballots = base_qs.count()
+
+        # Aggregate ballots per candidate party identifier
+        aggregated = (
+            base_qs.values("accepted_candidate_party__identifier")
+            .annotate(ballots=Count("pk"))
+        )
+        # Build result list with shares; sort deterministically by ballots desc, then party_id asc
+        results = []
+        for row in aggregated:
+            party_id = row["accepted_candidate_party__identifier"]
+            ballots = int(row["ballots"] or 0)
+            share = (ballots / total_ballots) if total_ballots else 0.0
+            results.append(
+                {"party_id": party_id, "ballots": ballots, "share": share}
+            )
+        results.sort(key=lambda r: (-r["ballots"], r["party_id"]))
+
+        response = {"results": results, "total_ballots": total_ballots}
+
+        last_vpr = base_qs.order_by("pk").last()
+        if last_vpr:
+            response["last_paper"] = {
+                "index": last_vpr.index,
+                "party_id": last_vpr.accepted_candidate_party.identifier,
+            }
+        else:
+            response["last_paper"] = None
+        return Response(response)
+
+        return Response(response)
