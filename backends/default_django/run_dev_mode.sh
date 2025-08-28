@@ -1,16 +1,14 @@
 #!/bin/bash
 
 # Script to start the MCP server
-# This script activates the virtual environment and runs the codetools-mcp.py script
+# This script activates the virtual environment and runs the manage.py script
 
 set -e  # Exit on any error
 
 # Get the project root directory (directory containing this script)
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PATH="$PROJECT_ROOT/.venv"
-SRC_PATH="$PROJECT_ROOT/src"
-
-echo "Starting MCP server..."
+SRC_PATH="$PROJECT_ROOT"
 
 # Check if virtual environment exists
 if [[ ! -d "$VENV_PATH" ]]; then
@@ -25,9 +23,9 @@ if [[ ! -d "$SRC_PATH" ]]; then
     exit 1
 fi
 
-# Check if codetools-mcp.py exists
-if [[ ! -f "$SRC_PATH/codetools-mcp.py" ]]; then
-    echo "Error: codetools-mcp.py not found at $SRC_PATH/codetools-mcp.py"
+# Check if manage.py exists
+if [[ ! -f "$SRC_PATH/manage.py" ]]; then
+    echo "Error: manage.py not found at $SRC_PATH/manage.py"
     exit 1
 fi
 

@@ -56,7 +56,7 @@ class VoteAdmin(GeneratedVoteAdmin):
 @admin.register(VoteProposed)
 class VoteProposedAdmin(GeneratedVoteProposedAdmin):
 
-    pass
+    list_display = ('id', 'gender', 'age', 'has_torn')
 
 
 @admin.register(Voter)

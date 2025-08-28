@@ -1,6 +1,8 @@
 from .gen.base_settings import *
 from decouple import config
 
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
+
 INSTALLED_APPS.remove("pro_auth")
 # INSTALLED_APPS.remove("uni_ps")
 INSTALLED_APPS.remove("crispy_forms")
