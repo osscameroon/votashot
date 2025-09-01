@@ -31,7 +31,14 @@ from .models import (
 @admin.register(Source)
 class SourceAdmin(GeneratedSourceAdmin):
 
-    pass
+    list_display = (
+        "id",
+        "elector_id",
+        "type",
+        "official_org",
+        "full_name",
+        "email",
+    )
 
 
 @admin.register(PollOffice)
@@ -49,7 +56,7 @@ class VoteAdmin(GeneratedVoteAdmin):
 @admin.register(VoteProposed)
 class VoteProposedAdmin(GeneratedVoteProposedAdmin):
 
-    pass
+    list_display = ('id', 'gender', 'age', 'has_torn')
 
 
 @admin.register(Voter)
