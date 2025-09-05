@@ -9391,7 +9391,7 @@
 													"font": "Arial;13;1",
 													"left": 573,
 													"top": 87,
-													"width": 157.53955078125,
+													"width": 199.70068359375,
 													"height": 13,
 													"text": "Gender"
 												},
@@ -9422,7 +9422,7 @@
 											"font": "Arial;13;0",
 											"left": 568,
 											"top": 80,
-											"width": 167.53955078125,
+											"width": 209.70068359375,
 											"height": 25,
 											"stereotypeLabel": {
 												"$ref": "AAAAAAGYqKi6v15SHqk="
@@ -9459,7 +9459,7 @@
 													"font": "Arial;13;0",
 													"left": 573,
 													"top": 110,
-													"width": 157.53955078125,
+													"width": 199.70068359375,
 													"height": 13,
 													"text": "+MALE: string = male",
 													"horizontalAlignment": 0
@@ -9476,17 +9476,34 @@
 													"font": "Arial;13;0",
 													"left": 573,
 													"top": 125,
-													"width": 157.53955078125,
+													"width": 199.70068359375,
 													"height": 13,
 													"text": "+FEMALE: string = female",
+													"horizontalAlignment": 0
+												},
+												{
+													"_type": "UMLAttributeView",
+													"_id": "AAAAAAGZFZ//+35Rxgc=",
+													"_parent": {
+														"$ref": "AAAAAAGYqKi6v15WgIg="
+													},
+													"model": {
+														"$ref": "AAAAAAGZFZ//8H5OMxw="
+													},
+													"font": "Arial;13;0",
+													"left": 573,
+													"top": 140,
+													"width": 199.70068359375,
+													"height": 13,
+													"text": "+UNDECIDED: string = undecided",
 													"horizontalAlignment": 0
 												}
 											],
 											"font": "Arial;13;0",
 											"left": 568,
 											"top": 105,
-											"width": 167.53955078125,
-											"height": 38
+											"width": 209.70068359375,
+											"height": 53
 										},
 										{
 											"_type": "UMLOperationCompartmentView",
@@ -9499,8 +9516,8 @@
 											},
 											"font": "Arial;13;0",
 											"left": 568,
-											"top": 143,
-											"width": 167.53955078125,
+											"top": 158,
+											"width": 209.70068359375,
 											"height": 10
 										},
 										{
@@ -9536,8 +9553,8 @@
 									"containerChangeable": true,
 									"left": 568,
 									"top": 80,
-									"width": 166.53955078125,
-									"height": 73,
+									"width": 208.70068359375,
+									"height": 88,
 									"nameCompartment": {
 										"$ref": "AAAAAAGYqKi6vl5RbZA="
 									},
@@ -9593,7 +9610,7 @@
 													"font": "Arial;13;1",
 													"left": 109,
 													"top": 255,
-													"width": 174.41796875,
+													"width": 199.70068359375,
 													"height": 13,
 													"text": "Age"
 												},
@@ -9624,7 +9641,7 @@
 											"font": "Arial;13;0",
 											"left": 104,
 											"top": 248,
-											"width": 184.41796875,
+											"width": 209.70068359375,
 											"height": 25,
 											"stereotypeLabel": {
 												"$ref": "AAAAAAGYqK3Q8V6OhqQ="
@@ -9661,7 +9678,7 @@
 													"font": "Arial;13;0",
 													"left": 109,
 													"top": 278,
-													"width": 174.41796875,
+													"width": 199.70068359375,
 													"height": 13,
 													"text": "+LESS_30: string = less_30",
 													"horizontalAlignment": 0
@@ -9678,7 +9695,7 @@
 													"font": "Arial;13;0",
 													"left": 109,
 													"top": 293,
-													"width": 174.41796875,
+													"width": 199.70068359375,
 													"height": 13,
 													"text": "+LESS_60: string = less_60",
 													"horizontalAlignment": 0
@@ -9695,17 +9712,34 @@
 													"font": "Arial;13;0",
 													"left": 109,
 													"top": 308,
-													"width": 174.41796875,
+													"width": 199.70068359375,
 													"height": 13,
 													"text": "+MORE_60: string = more_60",
+													"horizontalAlignment": 0
+												},
+												{
+													"_type": "UMLAttributeView",
+													"_id": "AAAAAAGZFaBuNn5cGqg=",
+													"_parent": {
+														"$ref": "AAAAAAGYqK3Q8l6S72Y="
+													},
+													"model": {
+														"$ref": "AAAAAAGZFaBuMH5ZtgU="
+													},
+													"font": "Arial;13;0",
+													"left": 109,
+													"top": 323,
+													"width": 199.70068359375,
+													"height": 13,
+													"text": "+UNDECIDED: string = undecided",
 													"horizontalAlignment": 0
 												}
 											],
 											"font": "Arial;13;0",
 											"left": 104,
 											"top": 273,
-											"width": 184.41796875,
-											"height": 53
+											"width": 209.70068359375,
+											"height": 68
 										},
 										{
 											"_type": "UMLOperationCompartmentView",
@@ -9718,8 +9752,8 @@
 											},
 											"font": "Arial;13;0",
 											"left": 104,
-											"top": 326,
-											"width": 184.41796875,
+											"top": 341,
+											"width": 209.70068359375,
 											"height": 10
 										},
 										{
@@ -9755,8 +9789,8 @@
 									"containerChangeable": true,
 									"left": 104,
 									"top": 248,
-									"width": 183.41796875,
-									"height": 88,
+									"width": 208.70068359375,
+									"height": 103,
 									"nameCompartment": {
 										"$ref": "AAAAAAGYqK3Q8V6Nop0="
 									},
@@ -9864,6 +9898,18 @@
 										"$ref": "AAAAAAGYqIZTblzqijI="
 									},
 									"defaultValue": "female"
+								},
+								{
+									"_type": "UMLAttribute",
+									"_id": "AAAAAAGZFZ//8H5OMxw=",
+									"_parent": {
+										"$ref": "AAAAAAGYqKi6vl5Og+g="
+									},
+									"name": "UNDECIDED",
+									"type": {
+										"$ref": "AAAAAAGYqIZTblzqijI="
+									},
+									"defaultValue": "undecided"
 								}
 							]
 						},
@@ -9910,6 +9956,18 @@
 										"$ref": "AAAAAAGYqIZTblzqijI="
 									},
 									"defaultValue": "more_60"
+								},
+								{
+									"_type": "UMLAttribute",
+									"_id": "AAAAAAGZFaBuMH5ZtgU=",
+									"_parent": {
+										"$ref": "AAAAAAGYqK3Q8V6Kkaw="
+									},
+									"name": "UNDECIDED",
+									"type": {
+										"$ref": "AAAAAAGYqIZTblzqijI="
+									},
+									"defaultValue": "undecided"
 								}
 							]
 						}

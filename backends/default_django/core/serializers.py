@@ -3,8 +3,9 @@ from rest_framework.fields import (
     BooleanField,
     CharField,
     ChoiceField,
+    FloatField,
     IntegerField,
-    JSONField, FloatField,
+    JSONField,
 )
 from rest_framework.serializers import Serializer
 

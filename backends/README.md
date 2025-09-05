@@ -141,6 +141,8 @@ Clients use these identifiers to name and upload the related vote media.
 ```json
 {
   "totals": {
+    "total_poll_offices": 13344,
+    "covered_poll_offices": 1000,
     "votes": 123,
     "male": 60,
     "female": 62,
@@ -150,11 +152,41 @@ Clients use these identifiers to name and upload the related vote media.
     "has_torn": 7
   },
   "last_vote": {
-    "index": 123,
-    "gender": "female",
-    "age": "less_60",
-    "has_torn": false,
-    "timestamp": "2025-08-15T14:02:11Z"
+    "Source 1": {
+      "index": 123,
+      "gender": "female",
+      "age": "less_60",
+      "has_torn": false,
+      "timestamp": "2025-08-15T14:02:11Z"
+    },
+    "Source 2": {
+      "index": 123,
+      "gender": "female",
+      "age": "less_60",
+      "has_torn": false,
+      "timestamp": "2025-08-15T14:02:11Z"
+    },
+    "Source ...": {
+      "index": 123,
+      "gender": "female",
+      "age": "less_60",
+      "has_torn": false,
+      "timestamp": "2025-08-15T14:02:11Z"
+    },
+    "Verified": {
+      "index": 123,
+      "gender": "female",
+      "age": "less_60",
+      "has_torn": false,
+      "timestamp": "2025-08-15T14:02:11Z"
+    },
+    "Accepted": {
+      "index": 123,
+      "gender": "female",
+      "age": "less_60",
+      "has_torn": false,
+      "timestamp": "2025-08-15T14:02:11Z"
+    }
   }
 }
 ```
@@ -190,7 +222,12 @@ Clients use these identifiers to name and upload the related vote media.
 
 ```json
 {
-  "last_paper": { "index": 250, "party_id": "ABC" },
+  "last_paper": {
+    "Source 1": { "index": 250, "party_id": "ABC" },
+    "Source 2": { "index": 250, "party_id": "ABC" },
+    "Source ...": { "index": 250, "party_id": "ABC" },
+    "Accepted": { "index": 250, "party_id": "ABC" } 
+  },
   "results": [
     { "party_id": "ABC", "ballots": 120, "share": 0.48 },
     { "party_id": "DEF", "ballots": 100, "share": 0.40 },

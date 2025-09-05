@@ -1,10 +1,11 @@
-from django.utils.text import slugify
-from core.models import PollOffice, Source, CandidateParty
+from core.models import CandidateParty, PollOffice, Source
+from core.tests.gen.test_votingpaperresult import (
+    GeneratedVotingPaperResultTestCase,
+)
 from django.urls import reverse
+from django.utils.text import slugify
 from rest_framework import status
 from rest_framework.test import APITestCase
-
-from core.tests.gen.test_votingpaperresult import GeneratedVotingPaperResultTestCase
 
 
 class VotingPaperResultViewTests(APITestCase):
@@ -24,7 +25,9 @@ class VotingPaperResultViewTests(APITestCase):
         # Prepare a CandidateParty required by serializer (party_id -> identifier)
         self.party_name = "Test Movement"
         self.candidate_name = "Jane Doe"
-        self.party_identifier = slugify(f"{self.party_name}-{self.candidate_name}")
+        self.party_identifier = slugify(
+            f"{self.party_name}-{self.candidate_name}"
+        )
         CandidateParty.objects.create(
             party_name=self.party_name,
             candidate_name=self.candidate_name,
@@ -135,6 +138,6 @@ class VotingPaperResultViewTests(APITestCase):
         self.assertIsNotNone(src.pk)
 
 
-class VotingPaperResultTestCase(GeneratedVotingPaperResultTestCase):
+class VotingPaperResultTestCase(APITestCase):
 
     pass
