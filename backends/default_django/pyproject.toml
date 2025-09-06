@@ -14,6 +14,7 @@ dependencies = [
     "django-silk>=5.4.1",
     "django-storages>=1.14.6",
     "django-stubs-ext>=5.2.2",
+    "django-cors-headers>=4.4.0",
     "django-uni-ps",
     "djangorestframework>=3.16.1",
     "drf-spectacular>=0.28.0",
@@ -21,8 +22,10 @@ dependencies = [
     "faker>=37.5.3",
     "model-bakery>=1.20.5",
     "pillow>=11.3.0",
+    "psycopg2-binary>=2.9.10",
     "python-decouple>=3.8",
     "traceback-with-variables>=2.2.0",
+    "boto3-stubs>=1.40.24",
 ]
 
 [tool.uv.sources]

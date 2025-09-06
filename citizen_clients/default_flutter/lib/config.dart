@@ -9,4 +9,3 @@ class AppConfig {
     defaultValue: 'http://localhost:8000',
   );
 }
-

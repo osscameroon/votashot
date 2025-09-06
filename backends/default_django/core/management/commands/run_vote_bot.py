@@ -7,6 +7,7 @@ from random import choice
 from typing import Dict, List
 import os
 import csv
+from uuid import uuid4
 
 from django.core.management.base import BaseCommand
 from django.core.management import call_command
@@ -14,7 +15,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from core.enums import Age, Gender
-from core.models import PollOffice, Source, Vote
+from core.models import PollOffice, Source, Vote, VoteVerified, Voter
 
 
 class Command(BaseCommand):
@@ -233,7 +234,9 @@ class Command(BaseCommand):
                 if verbosity >= 1:
                     self.stdout.write(self.style.NOTICE(f"Round {round_no}: casting votes for all offices."))
                 for po in poll_offices:
-                    index = poll_offices_indexes.get(po.id, Vote.objects.last().index)
+                    index = poll_offices_indexes.get(po.id)
+                    if index is None:
+                        index = Vote.objects.filter(poll_office=po).last().index if Vote.objects.filter(poll_office=po).last() else 0
                     index += 1
                     poll_offices_indexes[po.id] = index
 
@@ -289,7 +292,21 @@ class Command(BaseCommand):
                             except Exception as e:
                                 self.stdout.write(self.style.ERROR(str(e)))
 
-                        time.sleep(0.5)
+                    must_verify = choice([True, True, False])
+                    # if must_verify:
+                    vote = Vote.objects.get(index=index, poll_office=po)
+                    if VoteVerified.objects.filter(vote=vote).exists():
+                        pass
+                    else:
+                        VoteVerified.objects.create(vote=vote,
+                            voter=Voter.objects.create(elector_id=uuid4(), full_name="Random Name"),
+                            # Keep index in a reasonable range to spread votes across multiple ballots
+                            gender=random.choice(genders),
+                            age=random.choice(ages),
+                            has_torn=bool(random.getrandbits(1))
+                        )
+
+                    time.sleep(0.5)
                 # Per-vote sleeps already throttle the loop; no extra round sleep here.
         except KeyboardInterrupt:
             self.stdout.write(self.style.WARNING("Stopping vote bot (KeyboardInterrupt)."))

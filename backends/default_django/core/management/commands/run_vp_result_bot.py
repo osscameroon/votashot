@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from core.models import CandidateParty, PollOffice, Source
+from core.models import CandidateParty, PollOffice, Source, VotingPaperResult
 
 
 class Command(BaseCommand):
@@ -45,6 +45,7 @@ class Command(BaseCommand):
         per_office: int = options["per_office"]
         sleep_s: float = options["sleep"]
         min_parties: int = options["min_parties"]
+        verbosity: int = int(options.get("verbosity", 1))
 
         client = APIClient()
 
@@ -173,13 +174,32 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.WARNING("Entering infinite voting paper result loop. Ctrl+C to stop.")
         )
+        self.stdout.write(
+            self.style.WARNING(f"{registered_sources = }")
+        )
         try:
             while True:
                 for po in poll_offices:
-                    index = poll_offices_indexes.get(po.id, 0) + 1
+                    index = poll_offices_indexes.get(po.id)
+                    if index is None:
+                        index = VotingPaperResult.objects.filter(poll_office=po).last().index if \
+                            VotingPaperResult.objects.filter(poll_office=po) else 0
+                    index += 1
                     poll_offices_indexes[po.id] = index
 
-                    for reg in registered_sources.get(po.id, []):
+                    regs = registered_sources.get(po.id, [])
+                    if verbosity >= 2:
+                        self.stdout.write(
+                            self.style.NOTICE(
+                                f"PO {po.identifier}: index={index}; posting {len(regs)} vote(s)."
+                            )
+                        )
+
+                    sources_to_use_cnt = len(regs)
+                    sources_to_use_cnt -= random.choice([0, 1, 0])
+
+                    for i in range(sources_to_use_cnt):
+                        reg = regs[i]
                         token = reg["token"]
                         payload = {
                             "index": index,

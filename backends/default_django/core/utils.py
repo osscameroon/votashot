@@ -4,7 +4,13 @@ from collections import defaultdict
 from typing import Any, Dict, Iterable, Optional, Tuple
 
 from core.enums import Age, Gender
-from core.models import Vote, VoteProposed, VoteVerified
+from core.models import (
+    Vote,
+    VoteProposed,
+    VoteVerified,
+    VotingPaperResult,
+    VotingPaperResultProposed, CandidateParty,
+)
 
 Weight = float
 
@@ -116,3 +122,73 @@ def compute_vote_decision(
             "verified": 1 if verified else 0,
         },
     }
+
+
+def compute_voting_paper_result_decision(
+    vp_result: VotingPaperResult, *, include_details: bool = False
+) -> Tuple[Optional[object], Optional[Dict[str, Dict[str, Any]]]]:
+    """Compute the accepted CandidateParty for a VotingPaperResult.
+
+    Mirrors compute_vote_decision logic with weights:
+    - Each proposed party counts as 1.0
+    - Existing accepted party (if any) counts as 1.5 and is preferred on ties
+
+    Returns (candidate_party, details). If undecidable (no data), returns (None, None).
+    Details (if requested) contains weights, candidates, chosen (by identifier), reason, and counts.
+    """
+    # Collect proposed choices and current acceptance (if any)
+    proposed_qs: Iterable[VotingPaperResultProposed] = list(
+        vp_result.proposed_vp_results.all()
+    )
+
+    if not proposed_qs:
+        return None, None
+
+    undecided_party = CandidateParty.objects.get(identifier="**undecided**")
+
+    # Build mapping from candidate IDs to objects and identifiers for consistent details
+    id_to_obj: Dict[int, Any] = {}
+    id_to_identifier: Dict[int, str] = {}
+    for p in proposed_qs:
+        if p.party_candidate_id is not None and p.party_candidate_id not in id_to_obj:
+            id_to_obj[p.party_candidate_id] = p.party_candidate
+            id_to_identifier[p.party_candidate_id] = p.party_candidate.identifier
+
+    proposed_values = (p.party_candidate_id for p in proposed_qs)
+
+    chosen_id, raw_details = _choose_value(
+        proposed_values,
+        None,
+        use_undecided_on_tie=True,
+        undecided_value="undecided",
+    )
+
+    # Map chosen ID back to CandidateParty object when possible
+    chosen_party = id_to_obj.get(chosen_id) if chosen_id != "undecided" else undecided_party
+
+    if not include_details:
+        return chosen_party, None
+
+    # Convert internal numeric-keyed details to identifier-based for readability
+    weights_ident = {
+        id_to_identifier.get(k, str(k)): v for k, v in raw_details.get("weights", {}).items()
+    }
+    candidates_ident = [
+        id_to_identifier.get(k, str(k)) for k in raw_details.get("candidates", [])
+    ]
+    chosen_ident = id_to_identifier.get(raw_details.get("chosen"), str(raw_details.get("chosen")))
+
+    details = {
+        "party": {
+            "weights": weights_ident,
+            "candidates": candidates_ident,
+            "reason": raw_details.get("reason"),
+            "chosen": chosen_ident,
+        },
+        "counts": {
+            "proposed": len(list(proposed_qs)),
+            # Keep key name aligned with compute_vote_decision semantics
+        },
+    }
+
+    return chosen_party, details

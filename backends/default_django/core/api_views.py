@@ -38,7 +38,7 @@ from .models import (
     Vote,
     VoteAccepted,
     VoteProposed,
-    VotingPaperResult,
+    VotingPaperResult, VoteVerified, VotingPaperResultProposed,
 )
 from .serializers import (
     AuthenticationInputSerializer,
@@ -61,8 +61,6 @@ sts = boto3.client("sts")
 # Defaults used when running without AWS STS
 REGION = os.getenv("AWS_REGION", "us-east-1")
 base_path = getattr(settings, "AWS_S3_ENDPOINT_URL", "")
-
-poll_offices_count = PollOffice.objects.count()
 
 
 class SourceViewSet(GeneratedSourceViewSet):
@@ -311,6 +309,7 @@ class VotingPaperResultView(APIView):
 
 class PollOfficeStatsView(APIView):
     permission_classes = [AllowAny]
+    poll_offices_count = None
 
     @extend_schema(
         parameters=[OpenApiParameter("poll_office", type=int, required=False)],
@@ -335,7 +334,11 @@ class PollOfficeStatsView(APIView):
             }
             result["last_vote"]["Accepted"]["index"] = last_vote.id
 
-            result["last_vote"]["Verified"] = {}
+            try:
+                result["last_vote"]["Verified"] = VoteAcceptedSerializer(last_vote.voteverified).data
+                result["last_vote"]["Verified"]["index"] = last_vote.id
+            except VoteVerified.DoesNotExist:
+                result["last_vote"]["Verified"] = {}
 
             for prop_vote in last_vote.proposed_votes.all():
                 prop_vote: VoteProposed
@@ -359,9 +362,12 @@ class PollOfficeStatsView(APIView):
             more_60=Count("pk", filter=Q(age=Age.MORE_60)),
             has_torn=Count("pk", filter=Q(has_torn=True)),
         )
-        totals["total_poll_offices"] = poll_offices_count
+        if not PollOfficeStatsView.poll_offices_count:
+            PollOfficeStatsView.poll_offices_count = PollOffice.objects.count()
+        totals["total_poll_offices"] = PollOfficeStatsView.poll_offices_count
 
-        # totals['covered_poll_offices'] = SourceToken.objects.distinct('poll_office').count()
+        totals['covered_poll_offices'] = SourceToken.objects.distinct('poll_office').count()
+        totals['total_sources'] = SourceToken.objects.distinct('source').count()
         result["totals"] = totals
 
         return Response(result)
@@ -372,9 +378,25 @@ class PollOfficeStatsView(APIView):
         ).last()
         result = {}
         if last_vote:
-            result["last_vote"] = VoteAcceptedSerializer(
-                last_vote.voteaccepted
-            ).data
+            result["last_vote"] = {
+                "Accepted": VoteAcceptedSerializer(last_vote.voteaccepted).data
+            }
+            result["last_vote"]["Accepted"]["index"] = last_vote.index
+
+            try:
+                result["last_vote"]["Verified"] = VoteAcceptedSerializer(last_vote.voteverified).data
+                result["last_vote"]["Verified"]["index"] = last_vote.index
+            except VoteVerified.DoesNotExist:
+                result["last_vote"]["Verified"] = {}
+
+            for prop_vote in last_vote.proposed_votes.all():
+                prop_vote: VoteProposed
+                source_name = prop_vote.source.get_source_name()
+
+                result["last_vote"][source_name] = VoteProposedSerializer(
+                    prop_vote
+                ).data
+                result["last_vote"][source_name]["index"] = last_vote.index
 
         totals = VoteAccepted.objects.filter(
             vote__poll_office_id=poll_office_id
@@ -387,12 +409,17 @@ class PollOfficeStatsView(APIView):
             more_60=Count("pk", filter=Q(age=Age.MORE_60)),
             has_torn=Count("pk", filter=Q(has_torn=True)),
         )
+
+        totals['total_sources'] = SourceToken.objects.filter(poll_office_id=poll_office_id).distinct('source').count()
+
         result["totals"] = totals
 
         return Response(result)
 
 
 class PollOfficeResultsView(APIView):
+    permission_classes = [AllowAny]
+
     @extend_schema(
         parameters=[OpenApiParameter("poll_office", type=int, required=False)],
         responses={200: PollOfficeResultSerializer()},
@@ -402,13 +429,19 @@ class PollOfficeResultsView(APIView):
 
         Response structure:
         {
-          "last_paper": { "index": 250, "party_id": "ABC" },
+          "last_paper": {
+            "Accepted": { "index": 250, "party_id": "ABC" },
+            "Source 1": { "index": 250, "party_id": "ABC" }
+          },
           "results": [
             { "party_id": "ABC", "ballots": 120, "share": 0.48 },
             { "party_id": "DEF", "ballots": 100, "share": 0.40 },
             { "party_id": "GHI", "ballots": 30,  "share": 0.12 }
           ],
-          "total_ballots": 250
+          "totals": {
+            "total_ballots": 250,
+            "total_sources": 4
+          }
         }
         """
 
@@ -437,13 +470,25 @@ class PollOfficeResultsView(APIView):
             )
         results.sort(key=lambda r: (-r["ballots"], r["party_id"]))
 
-        response = {"results": results, "total_ballots": total_ballots}
+        totals = {
+            "total_ballots": total_ballots,
+            "total_sources": SourceToken.objects.distinct('source').count(),
+        }
 
-        last_vpr = base_qs.order_by("pk").last()
+        response = {"results": results, "totals": totals}
+
+        last_vpr: VotingPaperResult = base_qs.order_by("pk").last()
         if last_vpr:
-            response["last_paper"] = {
+            response["last_paper"] = {}
+            response["last_paper"]["Accepted"] = {
                 "index": last_vpr.index,
                 "party_id": last_vpr.accepted_candidate_party.identifier,
+            }
+            for prop_vp in last_vpr.proposed_vp_results.all():
+                prop_vp: VotingPaperResultProposed
+                response["last_paper"][prop_vp.source.get_source_name()] = {
+                "index": last_vpr.index,
+                "party_id": prop_vp.party_candidate.identifier,
             }
         else:
             response["last_paper"] = None

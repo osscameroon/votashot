@@ -4,6 +4,7 @@ import 'dart:convert';
 class StatsTotals {
   final int totalPollOffices;
   final int coveredPollOffices;
+  final int totalSources;
   final int votes;
   final int male;
   final int female;
@@ -15,6 +16,7 @@ class StatsTotals {
   const StatsTotals({
     required this.totalPollOffices,
     required this.coveredPollOffices,
+    required this.totalSources,
     required this.votes,
     required this.male,
     required this.female,
@@ -27,6 +29,7 @@ class StatsTotals {
   factory StatsTotals.fromJson(Map<String, dynamic> json) => StatsTotals(
     totalPollOffices: (json['total_poll_offices'] ?? 0) as int,
     coveredPollOffices: (json['covered_poll_offices'] ?? 0) as int,
+    totalSources: (json['total_sources'] ?? 0) as int,
     votes: (json['votes'] ?? 0) as int,
     male: (json['male'] ?? 0) as int,
     female: (json['female'] ?? 0) as int,

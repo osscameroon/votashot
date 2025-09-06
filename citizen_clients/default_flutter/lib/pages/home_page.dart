@@ -85,4 +85,3 @@ class _HomeCard extends StatelessWidget {
     );
   }
 }
-

@@ -76,22 +76,22 @@ class Command(BaseCommand):
         created_count = 0
         five_min_ago = timezone.now() - timedelta(minutes=5)
 
-        with transaction.atomic():
-            # Lock a slice of pending votes. skip_locked prevents blocking on locks.
-            pending_votes = (
-                Vote.objects.select_for_update(skip_locked=True)
-                .filter(voteaccepted__isnull=True,
-                        proposed_votes__created_at__lt=five_min_ago)
-                .order_by("id")[:batch_size]
-            )
+        # with transaction.atomic():
+        #     # Lock a slice of pending votes. skip_locked prevents blocking on locks.
+        pending_votes = (
+            Vote.objects
+            .filter(voteaccepted__isnull=True,
+                    proposed_votes__created_at__lt=five_min_ago)
+            .order_by("id")[:batch_size]
+        )
 
-            votes = list(pending_votes)
-            if verbosity >= 1:
-                self.stdout.write(
-                    self.style.NOTICE(
-                        f"Cycle {cycle_no}: fetched {len(votes)} pending votes to decide"
-                    )
+        votes = list(pending_votes)
+        if verbosity >= 1:
+            self.stdout.write(
+                self.style.NOTICE(
+                    f"Cycle {cycle_no}: fetched {len(votes)} pending votes to decide"
                 )
+            )
 
         # Process outside the lock to minimize transaction time; we only locked ids.
         # We'll re-check existence of VoteAccepted when creating to keep idempotent.
