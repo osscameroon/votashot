@@ -46,6 +46,14 @@ class Source(GeneratedSource):
             return False
         return django_check_password(password, self.password)
 
+    def get_source_name(self):
+        source_name = self.full_name
+        if not source_name:
+            source_name = self.official_org
+        if not source_name:
+            source_name = self.elector_id
+        return source_name
+
 
 class PollOffice(GeneratedPollOffice):
 

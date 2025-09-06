@@ -8,9 +8,13 @@ class SourceType(GeneratedSourceType):
 
 class Gender(GeneratedGender):
 
-    pass
+    @classmethod
+    def values(cls):
+        return ["male", "female", "undecided"]
 
 
 class Age(GeneratedAge):
 
-    pass
+    @classmethod
+    def values(cls):
+        return ["less_30", "less_60", "more_60", "undecided"]
