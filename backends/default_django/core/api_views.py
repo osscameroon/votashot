@@ -326,7 +326,7 @@ class PollOfficeStatsView(APIView):
     def handle_global_stats(self):
         last_vote: Vote = Vote.objects.filter(
             voteaccepted__isnull=False
-        ).last()
+        ).select_related('voteverified', 'voteaccepted').prefetch_related('proposed_votes__source').last()
         result = {}
         if last_vote:
             result["last_vote"] = {
@@ -353,7 +353,7 @@ class PollOfficeStatsView(APIView):
                 ).data
                 result["last_vote"][source_name]["index"] = last_vote.id
 
-        totals = VoteAccepted.objects.aggregate(
+        totals = VoteAccepted.objects.cache(ops=['aggregate'], timeout=60).aggregate(
             votes=Count("pk"),
             male=Count("pk", filter=Q(gender=Gender.MALE)),
             female=Count("pk", filter=Q(gender=Gender.FEMALE)),
@@ -363,11 +363,11 @@ class PollOfficeStatsView(APIView):
             has_torn=Count("pk", filter=Q(has_torn=True)),
         )
         if not PollOfficeStatsView.poll_offices_count:
-            PollOfficeStatsView.poll_offices_count = PollOffice.objects.count()
+            PollOfficeStatsView.poll_offices_count = PollOffice.objects.cache().count()
         totals["total_poll_offices"] = PollOfficeStatsView.poll_offices_count
 
-        totals['covered_poll_offices'] = SourceToken.objects.distinct('poll_office').count()
-        totals['total_sources'] = SourceToken.objects.distinct('source').count()
+        totals['covered_poll_offices'] = SourceToken.objects.cache().distinct('poll_office').count()
+        totals['total_sources'] = SourceToken.objects.cache().distinct('source').count()
         result["totals"] = totals
 
         return Response(result)
@@ -375,7 +375,7 @@ class PollOfficeStatsView(APIView):
     def handle_poll_office_stats(self, poll_office_id):
         last_vote: Vote = Vote.objects.filter(
             poll_office_id=poll_office_id, voteaccepted__isnull=False
-        ).last()
+        ).select_related('voteverified', 'voteaccepted').prefetch_related('proposed_votes__source').last()
         result = {}
         if last_vote:
             result["last_vote"] = {
@@ -400,7 +400,7 @@ class PollOfficeStatsView(APIView):
 
         totals = VoteAccepted.objects.filter(
             vote__poll_office_id=poll_office_id
-        ).aggregate(
+        ).cache(ops=['aggregate'], timeout=60).aggregate(
             votes=Count("pk"),
             male=Count("pk", filter=Q(gender=Gender.MALE)),
             female=Count("pk", filter=Q(gender=Gender.FEMALE)),
@@ -410,7 +410,7 @@ class PollOfficeStatsView(APIView):
             has_torn=Count("pk", filter=Q(has_torn=True)),
         )
 
-        totals['total_sources'] = SourceToken.objects.filter(poll_office_id=poll_office_id).distinct('source').count()
+        totals['total_sources'] = SourceToken.objects.filter(poll_office_id=poll_office_id).cache().distinct('source').count()
 
         result["totals"] = totals
 
