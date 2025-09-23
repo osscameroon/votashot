@@ -309,7 +309,6 @@ class VotingPaperResultView(APIView):
 
 class PollOfficeStatsView(APIView):
     permission_classes = [AllowAny]
-    poll_offices_count = None
 
     @extend_schema(
         parameters=[OpenApiParameter("poll_office", type=int, required=False)],
@@ -362,12 +361,10 @@ class PollOfficeStatsView(APIView):
             more_60=Count("pk", filter=Q(age=Age.MORE_60)),
             has_torn=Count("pk", filter=Q(has_torn=True)),
         )
-        if not PollOfficeStatsView.poll_offices_count:
-            PollOfficeStatsView.poll_offices_count = PollOffice.objects.cache().count()
-        totals["total_poll_offices"] = PollOfficeStatsView.poll_offices_count
 
+        totals["total_poll_offices"] = PollOffice.objects.cache().count()
         totals['covered_poll_offices'] = SourceToken.objects.cache().distinct('poll_office').count()
-        totals['total_sources'] = SourceToken.objects.cache().distinct('source').count()
+        totals['total_sources'] = Source.objects.cache().count()
         result["totals"] = totals
 
         return Response(result)

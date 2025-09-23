@@ -31,7 +31,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--batch-size",
             type=int,
-            default=100,
+            default=1000,
             help="Max votes to process per cycle (default: 100)",
         )
 

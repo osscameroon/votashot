@@ -69,7 +69,8 @@ class Command(BaseCommand):
         created = 0
         prepared: list[tuple[Source, str]] = []  # (instance, raw_password)
 
-        for _ in range(count):
+        for i in range(count):
+            self.stdout.write(self.style.WARNING(f"Generating {i+1} Source ..."))
             # Ensure unique elector_id within this run and DB
             for _attempt in range(20):
                 elector_id = generate_elector_id()
@@ -125,8 +126,6 @@ class Command(BaseCommand):
             return
 
         with transaction.atomic():
-            for s, _ in prepared:
-                s.save()
-                created += 1
+            created = Source.objects.bulk_create([p[0] for p in prepared])
 
         self.stdout.write(self.style.SUCCESS(f"Created {created} Source records."))

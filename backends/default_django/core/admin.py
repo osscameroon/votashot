@@ -39,6 +39,7 @@ class SourceAdmin(GeneratedSourceAdmin):
         "full_name",
         "email",
     )
+    readonly_fields = ('user',)
 
 
 @admin.register(PollOffice)

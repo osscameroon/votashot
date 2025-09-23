@@ -12,7 +12,7 @@ INSTALLED_APPS.append('cacheops')
 # UFRECS mode
 WORK_MODE = "test"
 
-MIDDLEWARE.append("silk.middleware.SilkyMiddleware")
+# MIDDLEWARE.append("silk.middleware.SilkyMiddleware")
 
 # configure wasabi s3
 DEFAULT_FILE_STORAGE = "core.storage_backends.MediaStorage"
