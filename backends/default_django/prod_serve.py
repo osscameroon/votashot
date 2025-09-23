@@ -7,4 +7,4 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ufrecs.settings")
 
 application = get_wsgi_application()
 
-pyruvate.serve(application, "127.0.0.1:8000", 48)
+pyruvate.serve(application, "127.0.0.1:8448", 12)
