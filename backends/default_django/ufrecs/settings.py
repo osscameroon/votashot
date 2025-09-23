@@ -90,3 +90,55 @@ CACHEOPS = {
     # Invalidation is still automatic
     '*.*': {'ops': (), 'timeout': 60*60},
 }
+
+LOGS_DIR = BASE_DIR.joinpath("logs")
+try:
+    LOGS_DIR.mkdir()
+except Exception:
+    pass
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s - %(pathname)s",
+            "datefmt": "%d/%b/%Y %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "default": {
+            "level": "DEBUG",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "default.log"),
+            "formatter": "standard",
+            "maxBytes": 104857600,
+            "backupCount": 2,
+        },
+        "handler_error": {
+            "level": "ERROR",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "error.log"),
+            "formatter": "standard",
+            "maxBytes": 104857600,
+            "backupCount": 2,
+        },
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["handler_error"],
+            "level": "ERROR",
+            "propagate": True,
+        },
+        "": {
+            "handlers": ["default", "handler_error", "console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
