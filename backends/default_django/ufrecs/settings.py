@@ -6,6 +6,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
 INSTALLED_APPS.remove("pro_auth")
 # INSTALLED_APPS.remove("uni_ps")
 INSTALLED_APPS.remove("crispy_forms")
+INSTALLED_APPS.remove("common_bases")
 INSTALLED_APPS.remove("crispy_bootstrap5")
 INSTALLED_APPS.append('corsheaders')
 INSTALLED_APPS.append('cacheops')
