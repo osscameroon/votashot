@@ -145,3 +145,5 @@ LOGGING = {
 
 
 DOWNLOADS_DIR = BASE_DIR / "downloads"
+
+STATIC_ROOT = BASE_DIR / "static"
