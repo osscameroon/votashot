@@ -11,6 +11,7 @@ from .gen.filters import (
     GeneratedVotingPaperResultFilterSet,
     GeneratedVotingPaperResultProposedFilterSet,
 )
+import django_filters as filters
 
 
 class SourceFilterSet(GeneratedSourceFilterSet):
@@ -19,8 +20,8 @@ class SourceFilterSet(GeneratedSourceFilterSet):
 
 
 class PollOfficeFilterSet(GeneratedPollOfficeFilterSet):
-
-    pass
+    search = filters.CharFilter('id', method='just_search')
+    search_fields = ['name', 'city']
 
 
 class VoteFilterSet(GeneratedVoteFilterSet):

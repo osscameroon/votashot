@@ -142,3 +142,6 @@ LOGGING = {
         },
     },
 }
+
+
+DOWNLOADS_DIR = BASE_DIR / "downloads"

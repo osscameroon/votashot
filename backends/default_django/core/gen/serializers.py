@@ -49,6 +49,7 @@ class GeneratedPollOfficeSerializer(ModelSerializer):
             "county",
             "district",
             "created_at",
+            "voters_count",
         ]
 
 

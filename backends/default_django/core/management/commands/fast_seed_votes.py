@@ -6,11 +6,13 @@ import random
 import time
 import csv
 import os
+import json
 from collections import defaultdict
 from random import choice
 from typing import Dict, List, Optional
 from uuid import uuid4
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.core.management import call_command
 
@@ -42,6 +44,10 @@ class Command(BaseCommand):
             "--batch-size", type=int, default=50,
             help="Votes per batch (default: 50)"
         )
+        parser.add_argument(
+            "--tokens-file", type=str, default="source_tokens.json",
+            help="Path to JSON file containing pre-authenticated source tokens by poll office"
+        )
 
     def handle(self, *args, **options):
         self.count = options["count"]
@@ -50,6 +56,7 @@ class Command(BaseCommand):
         self.pre_auth_count = options["pre_auth"]
         self.batch_size = options["batch_size"]
         self.verbosity = int(options.get("verbosity", 1))
+        self.tokens_file = options["tokens_file"]
 
         # Setup URLs
         self.auth_url = f"{self.server_url}/api/authenticate/"  # Adjust path as needed
@@ -80,14 +87,15 @@ class Command(BaseCommand):
         if not poll_offices:
             return
 
-        # 2. Ensure sufficient sources
-        await self.ensure_sources(poll_offices)
+        # 2. Load pre-authenticated tokens from file ONLY
+        authenticated_tokens = self.load_tokens_from_file(poll_offices)
 
-        # 3. Load credentials
-        await self.load_credentials()
-
-        # 4. Pre-authenticate sources
-        authenticated_tokens = await self.pre_authenticate_sources(poll_offices)
+        # Abort if no tokens are available
+        if not any(authenticated_tokens.values()):
+            self.stdout.write(self.style.ERROR(
+                f"No tokens loaded from {self.tokens_file}. Aborting."
+            ))
+            return
 
         if not any(authenticated_tokens.values()):
             self.stdout.write(self.style.ERROR("No sources were authenticated. Cannot proceed."))
@@ -106,9 +114,8 @@ class Command(BaseCommand):
 
     async def setup_poll_offices(self) -> List[PollOffice]:
         """Setup poll offices"""
-        poll_offices = []
-        async for tmp in PollOffice.objects.all():
-            poll_offices.append(tmp)
+        with (settings.BASE_DIR / "poll_offices.json").open() as fp:
+            poll_offices = [PollOffice(**row) for row in json.load(fp)]
 
         if not poll_offices:
             self.stdout.write(self.style.WARNING("No PollOffices found. Please create some first."))
@@ -119,137 +126,52 @@ class Command(BaseCommand):
         )
         return poll_offices
 
-    async def ensure_sources(self, poll_offices):
-        """Ensure we have enough sources"""
-        need_total = max(self.pre_auth_count, 5 * len(poll_offices))
-        current_sources = await Source.objects.acount()
+    def load_tokens_from_file(self, poll_offices) -> Dict[str, List[Dict]]:
+        """Load pre-authenticated tokens per poll office from JSON file.
 
-        if current_sources < need_total:
-            to_create = need_total - current_sources
-            self.stdout.write(self.style.WARNING(f"No sufficient sources found. Please create {to_create} first."))
-            return []
+        Expected format: {"<poll_office_identifier>": [ {"token": "...", ...}, ... ]}
 
-    async def load_credentials(self):
-        """Load source credentials from CSV"""
-        creds_path = os.path.join(os.getcwd(), "sources.csv")
-        self.credentials: Dict[str, str] = {}
+        Returns a dict mapping poll_office.identifier -> list of dicts with 'token' key.
+        Unknown or malformed entries are ignored.
+        """
+        path = os.path.join(os.getcwd(), self.tokens_file)
+        tokens_by_office: Dict[str, List[Dict]] = defaultdict(list)
 
-        if os.path.exists(creds_path):
-            try:
-                with open(creds_path, newline="", encoding="utf-8") as f:
-                    reader = csv.reader(f)
-                    header = next(reader, None)
-                    for row in reader:
-                        if len(row) >= 2:
-                            self.credentials[row[0]] = row[1]
+        if not os.path.exists(path):
+            if self.verbosity >= 2:
+                self.stdout.write(self.style.WARNING(f"Tokens file not found: {path}"))
+            return tokens_by_office
 
-                self.stdout.write(
-                    self.style.SUCCESS(f"Loaded {len(self.credentials)} credentials")
-                )
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Could not read sources.csv: {e}"))
-        else:
-            self.stdout.write(self.style.WARNING("sources.csv not found"))
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
 
-    async def pre_authenticate_sources(self, poll_offices) -> Dict[str, List[Dict]]:
-        """Pre-authenticate sources for all poll offices"""
-        self.stdout.write(self.style.NOTICE(f"Pre-authenticating sources... for {len(poll_offices)}"))
+            # Build a quick set of valid poll office identifiers
+            valid_office_ids = {po.identifier for po in poll_offices}
 
-        # Get available sources
-        available_sources = []
-        i = 0
-        async for source in Source.objects.all():
-            available_sources.append(source)
+            loaded_offices = 0
+            loaded_tokens = 0
+            for office_id, responses in data.items():
+                if office_id not in valid_office_ids:
+                    continue
+                if not isinstance(responses, list):
+                    continue
+                for item in responses:
+                    if isinstance(item, dict) and 'token' in item:
+                        tokens_by_office[office_id].append({'token': item['token']})
+                        loaded_tokens += 1
+                if tokens_by_office[office_id]:
+                    loaded_offices += 1
 
-            if i >= self.pre_auth_count:
-                break
-            else:
-                i += 1
-        self.stdout.write(self.style.NOTICE(f"Found {len(available_sources)} available sources"))
-        # available_sources = list(await Source.objects.afilter()[:self.pre_auth_count])
+            if self.verbosity >= 1:
+                self.stdout.write(self.style.SUCCESS(
+                    f"Loaded {loaded_tokens} tokens for {loaded_offices} poll offices from {self.tokens_file}"
+                ))
 
-        # Create authentication tasks
-        auth_tasks = []
-        semaphore = asyncio.Semaphore(self.concurrent)  # Limit concurrent requests
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"Failed to read tokens from {path}: {e}"))
 
-        async with aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=30),
-                connector=aiohttp.TCPConnector(limit=self.concurrent * 2)
-        ) as session:
-
-            for poll_office in poll_offices:
-                # Authenticate multiple sources per poll office
-                sources_per_office = random.randint(2, 5)
-                office_sources = available_sources[:sources_per_office]
-                available_sources = available_sources[sources_per_office:]
-
-                self.stdout.write(self.style.NOTICE(f"{sources_per_office=} {len(office_sources)=} {len(available_sources)=} available sources"))
-
-                for source in office_sources:
-                    if source.elector_id in self.credentials:
-                        task = self.authenticate_source(
-                            session, semaphore, source, poll_office
-                        )
-                        auth_tasks.append(task)
-
-            # Execute all authentication requests
-            auth_results = await asyncio.gather(*auth_tasks, return_exceptions=True)
-
-        # Organize results by poll office
-        authenticated_tokens = defaultdict(list)
-        successful_auths = 0
-
-        for result in auth_results:
-            if isinstance(result, dict) and 'token' in result:
-                authenticated_tokens[result['poll_office_id']].append(result)
-                successful_auths += 1
-            elif isinstance(result, Exception):
-                if self.verbosity >= 2:
-                    self.stdout.write(f"Auth exception: {result}")
-
-        self.stdout.write(
-            self.style.SUCCESS(f"✅ Successfully authenticated {successful_auths} sources")
-        )
-
-        return authenticated_tokens
-
-    async def authenticate_source(
-            self,
-            session: aiohttp.ClientSession,
-            semaphore: asyncio.Semaphore,
-            source: Source,
-            poll_office: PollOffice
-    ) -> Optional[Dict]:
-        """Authenticate a single source"""
-        async with semaphore:
-            payload = {
-                "elector_id": source.elector_id,
-                "password": self.credentials[source.elector_id],
-                "poll_office_id": poll_office.identifier,
-            }
-
-            try:
-                async with session.post(self.auth_url, json=payload) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        if 'token' in data:
-                            return {
-                                'token': data['token'],
-                                'source_id': source.elector_id,
-                                'poll_office_id': poll_office.identifier
-                            }
-
-                    if self.verbosity >= 3:
-                        error_text = await response.text()
-                        self.stdout.write(
-                            f"Auth failed for {source.elector_id}: {response.status} {error_text}"
-                        )
-
-            except Exception as e:
-                if self.verbosity >= 2:
-                    self.stdout.write(f"Auth error for {source.elector_id}: {e}")
-
-        return None
+        return tokens_by_office
 
     async def run_voting_simulation(self, poll_offices, authenticated_tokens):
         """Run the main voting simulation"""
