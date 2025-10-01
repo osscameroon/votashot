@@ -427,19 +427,34 @@ class PollOfficeStatsView(APIView):
                 ).data
                 result["last_vote"][source_name]["index"] = last_vote.index
 
-        totals = (
-            VoteAccepted.objects.filter(vote__poll_office_id=poll_office_id)
-            .cache(ops=["aggregate"], timeout=60)
-            .aggregate(
-                votes=Count("pk"),
-                male=Count("pk", filter=Q(gender=Gender.MALE)),
-                female=Count("pk", filter=Q(gender=Gender.FEMALE)),
-                less_30=Count("pk", filter=Q(age=Age.LESS_30)),
-                less_60=Count("pk", filter=Q(age=Age.LESS_60)),
-                more_60=Count("pk", filter=Q(age=Age.MORE_60)),
-                has_torn=Count("pk", filter=Q(has_torn=True)),
+        if poll_office_id.isnumeric():
+            totals = (
+                VoteAccepted.objects.filter(vote__poll_office_id=poll_office_id)
+                .cache(ops=["aggregate"], timeout=60)
+                .aggregate(
+                    votes=Count("pk"),
+                    male=Count("pk", filter=Q(gender=Gender.MALE)),
+                    female=Count("pk", filter=Q(gender=Gender.FEMALE)),
+                    less_30=Count("pk", filter=Q(age=Age.LESS_30)),
+                    less_60=Count("pk", filter=Q(age=Age.LESS_60)),
+                    more_60=Count("pk", filter=Q(age=Age.MORE_60)),
+                    has_torn=Count("pk", filter=Q(has_torn=True)),
+                )
             )
-        )
+        else:
+            totals = (
+                VoteAccepted.objects.filter(vote__poll_office__identifier=poll_office_id)
+                .cache(ops=["aggregate"], timeout=60)
+                .aggregate(
+                    votes=Count("pk"),
+                    male=Count("pk", filter=Q(gender=Gender.MALE)),
+                    female=Count("pk", filter=Q(gender=Gender.FEMALE)),
+                    less_30=Count("pk", filter=Q(age=Age.LESS_30)),
+                    less_60=Count("pk", filter=Q(age=Age.LESS_60)),
+                    more_60=Count("pk", filter=Q(age=Age.MORE_60)),
+                    has_torn=Count("pk", filter=Q(has_torn=True)),
+                )
+            )
 
         totals["total_sources"] = (
             SourceToken.objects.filter(poll_office_id=poll_office_id)
