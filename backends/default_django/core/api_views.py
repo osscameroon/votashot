@@ -110,7 +110,7 @@ class CandidatePartyViewSet(CustomGenericViewSet, ListModelMixin):
 
     serializer_class = CandidatePartySerializer
     permission_classes = [AllowAny]
-    queryset = CandidateParty.objects.cached().exclude(identifier__startswith='**')
+    queryset = CandidateParty.objects.cache().exclude(identifier__startswith='**')
 
 
 class VotingPaperResultViewSet(GeneratedVotingPaperResultViewSet):
