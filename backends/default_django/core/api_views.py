@@ -384,16 +384,25 @@ class PollOfficeStatsView(APIView):
 
         return Response(result)
 
-    def handle_poll_office_stats(self, poll_office_id):
-        last_vote: Vote = (
-            Vote.objects.filter(
-                Q(poll_office_id=poll_office_id,
-                  poll_office__identifier=poll_office_id), voteaccepted__isnull=False
+    def handle_poll_office_stats(self, poll_office_id:str):
+        if poll_office_id.isnumeric():
+            last_vote: Vote = (
+                Vote.objects.filter(
+                    poll_office_id=poll_office_id, voteaccepted__isnull=False
+                )
+                .select_related("voteverified", "voteaccepted")
+                .prefetch_related("proposed_votes__source")
+                .last()
             )
-            .select_related("voteverified", "voteaccepted")
-            .prefetch_related("proposed_votes__source")
-            .last()
-        )
+        else:
+            last_vote: Vote = (
+                Vote.objects.filter(
+                    oll_office__identifier=poll_office_id, voteaccepted__isnull=False
+                )
+                .select_related("voteverified", "voteaccepted")
+                .prefetch_related("proposed_votes__source")
+                .last()
+            )
         result = {}
         if last_vote:
             result["last_vote"] = {
@@ -478,8 +487,10 @@ class PollOfficeResultsView(APIView):
             accepted_candidate_party__isnull=False
         )
         if poll_office_id:
-            base_qs = base_qs.filter(Q(poll_office_id=poll_office_id,
-                                       poll_office__identifier=poll_office_id))
+            if poll_office_id.isnumeric():
+                base_qs = base_qs.filter(poll_office_id=poll_office_id)
+            else:
+                base_qs = base_qs.filter(poll_office__identifier=poll_office_id)
 
         total_ballots = base_qs.count()
 
