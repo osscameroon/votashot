@@ -456,12 +456,20 @@ class PollOfficeStatsView(APIView):
                 )
             )
 
-        totals["total_sources"] = (
-            SourceToken.objects.filter(poll_office_id=poll_office_id)
-            .cache()
-            .distinct("source")
-            .count()
-        )
+        if poll_office_id.isnumeric():
+            totals["total_sources"] = (
+                SourceToken.objects.filter(poll_office_id=poll_office_id)
+                .cache()
+                .distinct("source")
+                .count()
+            )
+        else:
+            totals["total_sources"] = (
+                SourceToken.objects.filter(poll_office__identifier=poll_office_id)
+                .cache()
+                .distinct("source")
+                .count()
+            )
 
         result["totals"] = totals
 
