@@ -45,7 +45,7 @@ class SourceAdmin(GeneratedSourceAdmin):
 @admin.register(PollOffice)
 class PollOfficeAdmin(GeneratedPollOfficeAdmin):
 
-    pass
+    search_fields = ("identifier", "name")
 
 
 @admin.register(Vote)
