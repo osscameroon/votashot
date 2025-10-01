@@ -397,7 +397,7 @@ class PollOfficeStatsView(APIView):
         else:
             last_vote: Vote = (
                 Vote.objects.filter(
-                    oll_office__identifier=poll_office_id, voteaccepted__isnull=False
+                    poll_office__identifier=poll_office_id, voteaccepted__isnull=False
                 )
                 .select_related("voteverified", "voteaccepted")
                 .prefetch_related("proposed_votes__source")
