@@ -81,7 +81,7 @@ class VoteAcceptedAdmin(GeneratedVoteAcceptedAdmin):
 @admin.register(CandidateParty)
 class CandidatePartyAdmin(GeneratedCandidatePartyAdmin):
 
-    list_display = ('id', 'candidate_name', 'party_name', 'identifier')
+    list_display = ("id", "candidate_name", "party_name", "identifier")
 
 
 @admin.register(VotingPaperResult)

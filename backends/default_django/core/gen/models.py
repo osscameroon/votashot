@@ -53,6 +53,7 @@ class GeneratedPollOffice(models.Model):
     )
     identifier: Union[str, models.CharField] = models.CharField(
         max_length=255,
+        unique=True,
     )
     country: Union[str, models.CharField] = models.CharField(
         max_length=255,

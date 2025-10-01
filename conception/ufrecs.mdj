@@ -2232,7 +2232,7 @@
 													"top": 509,
 													"width": 158.904296875,
 													"height": 13,
-													"text": "+identifier: string",
+													"text": "+identifier: string {unique}",
 													"horizontalAlignment": 0
 												},
 												{
@@ -8198,9 +8198,11 @@
 										"$ref": "AAAAAAGYqJe9Tl2raSo="
 									},
 									"name": "identifier",
+									"documentation": "\nindex: true",
 									"type": {
 										"$ref": "AAAAAAGYqIZTblzqijI="
-									}
+									},
+									"isUnique": true
 								},
 								{
 									"_type": "UMLAttribute",

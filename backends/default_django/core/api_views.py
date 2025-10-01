@@ -9,13 +9,13 @@ from django.conf import settings
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.mixins import ListModelMixin
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django_filters.rest_framework import DjangoFilterBackend
 
 from .enums import Age, Gender, SourceType
 from .filters import PollOfficeFilterSet
@@ -110,7 +110,7 @@ class CandidatePartyViewSet(CustomGenericViewSet, ListModelMixin):
 
     serializer_class = CandidatePartySerializer
     permission_classes = [AllowAny]
-    queryset = CandidateParty.objects.all()
+    queryset = CandidateParty.objects.cached().exclude(identifier__startswith='**')
 
 
 class VotingPaperResultViewSet(GeneratedVotingPaperResultViewSet):
@@ -387,7 +387,8 @@ class PollOfficeStatsView(APIView):
     def handle_poll_office_stats(self, poll_office_id):
         last_vote: Vote = (
             Vote.objects.filter(
-                poll_office_id=poll_office_id, voteaccepted__isnull=False
+                Q(poll_office_id=poll_office_id,
+                  poll_office__identifier=poll_office_id), voteaccepted__isnull=False
             )
             .select_related("voteverified", "voteaccepted")
             .prefetch_related("proposed_votes__source")
@@ -477,7 +478,8 @@ class PollOfficeResultsView(APIView):
             accepted_candidate_party__isnull=False
         )
         if poll_office_id:
-            base_qs = base_qs.filter(poll_office_id=poll_office_id)
+            base_qs = base_qs.filter(Q(poll_office_id=poll_office_id,
+                                       poll_office__identifier=poll_office_id))
 
         total_ballots = base_qs.count()
 
