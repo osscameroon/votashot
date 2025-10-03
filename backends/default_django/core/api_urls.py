@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .api_views import (AuthenticateApiView, ModeApiView, PollOfficeViewSet,
                         VoteApiView, VotingPaperResultView,
                         CandidatePartyViewSet, PollOfficeStatsView,
-                        PollOfficeResultsView)
+                        PollOfficeResultsView, RefreshS3CredentialsView)
 
 router = DefaultRouter()
 
@@ -20,4 +20,5 @@ urlpatterns += [
     path("votingpaperresult/", VotingPaperResultView.as_view(), name="voting-paper-result"),
     path("pollofficestats/", PollOfficeStatsView.as_view(), name="poll-office-stats"),
     path("pollofficeresults/", PollOfficeResultsView.as_view(), name="poll-office-results"),
+    path('refresh-s3-credentials/', RefreshS3CredentialsView.as_view(), name='refresh-s3-credentials'),
 ]
