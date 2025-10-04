@@ -53,6 +53,7 @@ class GeneratedPollOffice(models.Model):
     )
     identifier: Union[str, models.CharField] = models.CharField(
         max_length=255,
+        unique=True,
     )
     country: Union[str, models.CharField] = models.CharField(
         max_length=255,
@@ -84,6 +85,12 @@ class GeneratedPollOffice(models.Model):
     )
     created_at: Union[datetime, models.DateTimeField] = models.DateTimeField(
         auto_now_add=True,
+    )
+    voters_count: Optional[Union[int, models.IntegerField]] = (
+        models.IntegerField(
+            null=True,
+            blank=True,
+        )
     )
 
     class Meta:

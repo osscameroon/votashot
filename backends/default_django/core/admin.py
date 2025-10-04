@@ -39,12 +39,13 @@ class SourceAdmin(GeneratedSourceAdmin):
         "full_name",
         "email",
     )
+    readonly_fields = ("user",)
 
 
 @admin.register(PollOffice)
 class PollOfficeAdmin(GeneratedPollOfficeAdmin):
 
-    pass
+    search_fields = ("identifier", "name")
 
 
 @admin.register(Vote)
@@ -80,7 +81,7 @@ class VoteAcceptedAdmin(GeneratedVoteAcceptedAdmin):
 @admin.register(CandidateParty)
 class CandidatePartyAdmin(GeneratedCandidatePartyAdmin):
 
-    pass
+    list_display = ("id", "candidate_name", "party_name", "identifier")
 
 
 @admin.register(VotingPaperResult)

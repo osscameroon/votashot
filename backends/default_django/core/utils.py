@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
+import time
 from collections import defaultdict
 from typing import Any, Dict, Iterable, Optional, Tuple
+from django.conf import settings
+import boto3
 
 from core.enums import Age, Gender
 from core.models import (
@@ -192,3 +196,58 @@ def compute_voting_paper_result_decision(
     }
 
     return chosen_party, details
+
+
+def issue_scoped_creds(poll_office_id:str, user_id:str):
+    # Validate env
+    missing = [k for k, v in {
+        "S3_BUCKET": settings.AWS_STORAGE_BUCKET_NAME,
+        "STS_UPLOAD_ROLE_ARN": settings.AWS_S3_STS_ROLE_ARN,
+        "S3_STS_ENDPOINT": settings.AWS_S3_STS_ENDPOINT_URL
+    }.items() if not v]
+    if missing:
+        raise ValueError(f"Missing env vars: {', '.join(missing)}")
+
+    BUCKET = settings.AWS_STORAGE_BUCKET_NAME
+    STS_ENDPOINT = settings.AWS_S3_STS_ENDPOINT_URL
+    S3_REGION = settings.AWS_S3_REGION_NAME
+    ROLE_ARN = settings.AWS_S3_STS_ROLE_ARN
+
+
+    # Wasabi STS client (IMPORTANT: endpoint_url points to Wasabi STS)
+    sts = boto3.client("sts", endpoint_url=STS_ENDPOINT, region_name="us-east-1",
+                       aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                       aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+
+    # Defense-in-depth: session policy restricts to EXACT office/user prefix
+    session_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["s3:PutObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
+                "Resource": f"arn:aws:s3:::{BUCKET}/{poll_office_id}/{user_id}/*"
+            },
+            {
+                "Effect": "Allow",
+                "Action": ["s3:ListBucket"],
+                "Resource": f"arn:aws:s3:::{BUCKET}",
+                "Condition": { "StringLike": { "s3:prefix": [f"{poll_office_id}/{user_id}/*"] } }
+            }
+        ]
+    }
+
+    res = sts.assume_role(
+        RoleArn=ROLE_ARN,
+        RoleSessionName=f"u-{user_id}-{int(time.time())}",
+        DurationSeconds=43200,
+        # Optional session tags (helpful if you add tag-based policies later)
+        Tags=[
+            {"Key": "user_id", "Value": user_id},
+            {"Key": "poll_office_id", "Value": poll_office_id},
+        ],
+        # TransitiveTagKeys=["user_id", "poll_office_id"],
+        Policy=json.dumps(session_policy),
+    )
+    c = res["Credentials"]
+    return c
